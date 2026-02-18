@@ -1,8 +1,123 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bikes for Sale</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 16px;
+      font-weight: 400;
+      background: #ffffff;
+      color: #050505;
+      line-height: 1.5;
+    }
+
+    header {
+      background: #53a735;
+      color: white;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+    }
+
+    header h1 {
+      font-family: 'Trebuchet MS', Helvetica, sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.25rem;
+    }
+
+    header p {
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+
+    #bikes {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .bike-card {
+      background: white;
+      border-radius: 5px;
+      border: 1px solid #e0e0e0;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .bike-card:hover {
+      border-color: #53a735;
+    }
+
+    .bike-card-body {
+      padding: 1.5rem;
+    }
+
+    .bike-card h2 {
+      font-family: 'Trebuchet MS', Helvetica, sans-serif;
+      font-size: 24px;
+      font-weight: 400;
+      line-height: 1.5;
+      margin-bottom: 0.75rem;
+      color: #53a735;
+    }
+
+    .bike-card .description {
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 1rem;
+    }
+
+    .bike-card .price {
+      display: inline-block;
+      background: #53a735;
+      color: white;
+      padding: 15px 26px;
+      border-radius: 5px;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: capitalize;
+      transition: background 0.2s;
+    }
+
+    .bike-card:hover .price {
+      background: #c666f2;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: #888;
+      font-size: 1.1rem;
+    }
+
+    .error {
+      text-align: center;
+      padding: 3rem;
+      color: #c0392b;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
 <body>
-  <h1>Available Bikes</h1>
-  <div id="bikes"></div>
+  <header>
+    <h1>Bikes for Sale</h1>
+    <p>Quality bicycles supporting our community co-op</p>
+  </header>
+
+  <div id="bikes">
+    <div class="loading">Loading bikes...</div>
+  </div>
 
   <script>
     const url = "https://docs.google.com/spreadsheets/d/1V_8ExLOLyxVXeImMNdwBGJ9EKeqKqVVZPl_8DVevNC4/gviz/tq?tqx=out:json";
@@ -10,29 +125,34 @@
     fetch(url)
       .then(res => res.text())
       .then(text => {
-        const json = JSON.parse(text.substr(47).slice(0, -2));
+        const start = text.indexOf('(');
+        const end = text.lastIndexOf(')');
+        const json = JSON.parse(text.substring(start + 1, end));
         const rows = json.table.rows;
 
         const container = document.getElementById("bikes");
+        container.innerHTML = "";
 
         rows.forEach(row => {
           const name = row.c[1]?.v;
           const price = row.c[2]?.v;
           const desc = row.c[3]?.v;
-          const img = row.c[4]?.v;
-          const status = row.c[5]?.v;
-
-          if (status !== "available") return;
 
           const el = document.createElement("div");
+          el.className = "bike-card";
           el.innerHTML = `
-            <h2>${name}</h2>
-            <img src="${img}" width="300"/>
-            <p>${desc}</p>
-            <strong>${price}€</strong>
+            <div class="bike-card-body">
+              <h2>${name}</h2>
+              <div class="description">${desc.replace(/\n/g, '<br>')}</div>
+              <span class="price">${price} EUR</span>
+            </div>
           `;
           container.appendChild(el);
         });
+      })
+      .catch(err => {
+        console.error("Failed to load bikes:", err);
+        document.getElementById("bikes").innerHTML = '<div class="error">Failed to load bike listings.</div>';
       });
   </script>
 </body>
