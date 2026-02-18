@@ -149,6 +149,7 @@
 
     .bike-card-body {
       padding: 1.5rem;
+      position: relative;
     }
 
     .bike-card h2 {
@@ -201,6 +202,57 @@
     .btn-inquire:hover {
       background: #53a735;
       color: white;
+    }
+
+    .btn-share {
+      position: absolute;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: none;
+      border: none;
+      color: #53a735;
+      padding: 4px;
+      cursor: pointer;
+      opacity: 0.6;
+      transition: opacity 0.15s;
+    }
+
+    .btn-share:hover {
+      opacity: 1;
+    }
+
+    .btn-share .tooltip {
+      display: none;
+      position: absolute;
+      bottom: 100%;
+      right: 0;
+      background: #333;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      white-space: nowrap;
+      margin-bottom: 6px;
+    }
+
+    .btn-share .tooltip.show {
+      display: block;
+    }
+
+    .show-all-bar {
+      max-width: 800px;
+      margin: 1rem auto 0;
+      padding: 0 1.5rem;
+    }
+
+    .show-all-bar a {
+      color: #53a735;
+      text-decoration: none;
+      font-size: 15px;
+    }
+
+    .show-all-bar a:hover {
+      text-decoration: underline;
     }
 
     /* Lightbox */
@@ -385,6 +437,17 @@
       if (e.key === 'ArrowRight') lightboxNav(1);
     });
 
+    // Share
+    function shareBike(id, btn) {
+      const url = location.origin + location.pathname + '#' + id;
+      navigator.clipboard.writeText(url).then(() => {
+        const tooltip = btn.querySelector('.tooltip');
+        tooltip.textContent = 'Link kopiert!';
+        tooltip.classList.add('show');
+        setTimeout(() => tooltip.classList.remove('show'), 1500);
+      });
+    }
+
     // Parse Google Sheets date string like "Date(2026,1,6)"
     function parseGSDate(v) {
       const m = v.match(/Date\((\d+),(\d+),(\d+)\)/);
@@ -404,17 +467,39 @@
     }
 
     function renderBikes() {
-      const sorted = [...bikes];
-      if (currentSort === 'date') sorted.sort((a, b) => b.date - a.date);
-      else if (currentSort === 'price-asc') sorted.sort((a, b) => a.price - b.price);
-      else if (currentSort === 'price-desc') sorted.sort((a, b) => b.price - a.price);
+      const filterId = location.hash ? location.hash.slice(1) : null;
+      const filtered = filterId ? bikes.filter(b => b.id === filterId) : null;
+
+      // Show/hide sort bar and show-all bar
+      document.querySelector('.sort-bar').style.display = filtered ? 'none' : '';
+      let showAllBar = document.querySelector('.show-all-bar');
+      if (filtered && filtered.length > 0) {
+        if (!showAllBar) {
+          showAllBar = document.createElement('div');
+          showAllBar.className = 'show-all-bar';
+          document.getElementById('bikes').before(showAllBar);
+        }
+        const baseUrl = location.origin + location.pathname;
+        showAllBar.innerHTML = `<a href="${baseUrl}" onclick="showAll(event)">&larr; Alle Fahrräder anzeigen</a>`;
+        showAllBar.style.display = '';
+      } else if (showAllBar) {
+        showAllBar.style.display = 'none';
+      }
+
+      const list = filtered && filtered.length > 0 ? filtered : [...bikes];
+      if (!filtered) {
+        if (currentSort === 'date') list.sort((a, b) => b.date - a.date);
+        else if (currentSort === 'price-asc') list.sort((a, b) => a.price - b.price);
+        else if (currentSort === 'price-desc') list.sort((a, b) => b.price - a.price);
+      }
 
       const container = document.getElementById("bikes");
       container.innerHTML = "";
 
-      for (const bike of sorted) {
+      for (const bike of list) {
         const el = document.createElement("div");
         el.className = "bike-card";
+        el.id = bike.id;
 
         let carouselHtml = "";
         if (bike.images.length > 0) {
@@ -433,10 +518,17 @@
               <span class="btn btn-price">${bike.price} EUR</span>
               <a class="btn btn-inquire" href="${mailto}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>Anfrage</a>
             </div>
+            <button class="btn-share" onclick="shareBike('${bike.id}', this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg><span class="tooltip"></span></button>
           </div>
         `;
         container.appendChild(el);
       }
+    }
+
+    function showAll(e) {
+      e.preventDefault();
+      history.pushState(null, '', location.pathname);
+      renderBikes();
     }
 
     // Load bikes
