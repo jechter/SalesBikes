@@ -6,33 +6,34 @@ A simple, static website for a bicycle co-op that repairs donated bikes and give
 
 - Bike inventory is managed in a **Google Sheet** (published to the web).
 - The site fetches data from the sheet at page load using Google's Visualization API (`/gviz/tq?tqx=out:json`).
-- Only bikes with status "available" are displayed.
+- Bike images are stored in Google Drive folders (one folder per bike), listed via the Drive API.
 - There is no backend — this is a purely client-side, single-page site that can be hosted anywhere (GitHub Pages, Netlify, etc.).
 
 ## Google Sheet structure
 
-The sheet is at: `https://docs.google.com/spreadsheets/d/1V_8ExLOLyxVXeImMNdwBGJ9EKeqKqVVZPl_8DVevNC4`
+The sheet is at: `https://docs.google.com/spreadsheets/d/1yetJyZLSLszZaw6icMQaUiUlQHiFO_B1beAT-HNcHJQ`
 
-Expected columns (0-indexed):
+The first row contains headers. Expected columns (0-indexed):
 
-| Column | Field       | Description                          |
-|--------|-------------|--------------------------------------|
-| 0      | (unused/ID) | Row identifier or internal use       |
-| 1      | Name        | Bike name / model                    |
-| 2      | Price       | Price in euros                       |
-| 3      | Description | Short text describing the bike       |
-| 4      | Image URL   | URL to a photo of the bike           |
-| 5      | Status      | "available", "sold", etc.            |
+| Column | Field        | Description                                    |
+|--------|--------------|------------------------------------------------|
+| 0      | Listing Date | Date the bike was listed                       |
+| 1      | Title        | Bike name / model                              |
+| 2      | Price        | Price in euros                                 |
+| 3      | Description  | Short text describing the bike                 |
+| 4      | Image links  | URL to a Google Drive folder containing photos |
+| 5      | Status       | "available", "sold", etc.                      |
 
 ## Tech stack
 
 - Single HTML file with inline CSS and JavaScript
 - No build step, no dependencies, no framework
 - Vanilla JS `fetch()` to pull data from the Google Sheet
+- Google Drive API (with API key) to list images in Drive folders
 
 ## Design goals
 
 - Keep it simple: co-op volunteers with limited tech skills should be able to update inventory by editing the Google Sheet.
 - The site should look appealing and be easy to browse on both desktop and mobile.
-- Prices are displayed in euros (€).
-- Sold or reserved bikes are hidden from the listing automatically.
+- Prices are displayed in euros (EUR).
+- Styling matches the main rueckenwind.berlin website (green #53a735, Arial/Trebuchet MS fonts).
