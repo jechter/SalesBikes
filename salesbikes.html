@@ -152,6 +152,39 @@
       position: relative;
     }
 
+    .bike-card.inactive {
+      opacity: 0.5;
+    }
+
+    .bike-card.inactive .carousel {
+      position: relative;
+    }
+
+    .status-label {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 8px 24px;
+      border-radius: 4px;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      z-index: 1;
+    }
+
+    .category-label {
+      display: inline-block;
+      background: #f0f0f0;
+      color: #555;
+      padding: 2px 10px;
+      border-radius: 3px;
+      font-size: 13px;
+      margin-bottom: 0.5rem;
+    }
+
     .bike-card h2 {
       font-family: 'Trebuchet MS', Helvetica, sans-serif;
       font-size: 24px;
@@ -354,6 +387,13 @@
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/1yetJyZLSLszZaw6icMQaUiUlQHiFO_B1beAT-HNcHJQ/gviz/tq?tqx=out:json";
     const API_KEY = "AIzaSyC0x2Bbiq1YclQJtMBhBjZfrqYW-vdhBJQ";
 
+    const CATEGORIES = {
+      bmx: 'BMX-Räder', city: 'Cityräder', cross: 'Cross- & Trekkingräder',
+      cruise: 'Cruiser', ebike: 'Elektrofahrräder', fixie_singlespeed: 'Fixie & Singlespeed',
+      klapprad: 'Klappräder', lastenraeder: 'Lastenräder', mountainbike: 'Mountainbikes',
+      rennrad: 'Rennräder', tandem: 'Tandems', sonstiges: 'Andere Fahrräder',
+    };
+
     function extractFolderId(url) {
       const match = url.match(/folders\/([a-zA-Z0-9_-]+)/);
       return match ? match[1] : null;
@@ -488,9 +528,16 @@
 
       const list = filtered && filtered.length > 0 ? filtered : [...bikes];
       if (!filtered) {
-        if (currentSort === 'date') list.sort((a, b) => b.date - a.date);
-        else if (currentSort === 'price-asc') list.sort((a, b) => a.price - b.price);
-        else if (currentSort === 'price-desc') list.sort((a, b) => b.price - a.price);
+        // Sort by chosen field, but always push Sold to the end
+        const statusOrder = s => s === 'Sold' ? 2 : s === 'WIP' ? 1 : 0;
+        list.sort((a, b) => {
+          const sa = statusOrder(a.status), sb = statusOrder(b.status);
+          if (sa !== sb) return sa - sb;
+          if (currentSort === 'date') return b.date - a.date;
+          if (currentSort === 'price-asc') return a.price - b.price;
+          if (currentSort === 'price-desc') return b.price - a.price;
+          return 0;
+        });
       }
 
       const container = document.getElementById("bikes");
@@ -498,7 +545,9 @@
 
       for (const bike of list) {
         const el = document.createElement("div");
-        el.className = "bike-card";
+        const dimmed = bike.status === 'WIP' || bike.status === 'Sold';
+        const hideInquire = bike.status === 'Sold';
+        el.className = 'bike-card' + (dimmed ? ' inactive' : '');
         el.id = bike.id;
 
         let carouselHtml = "";
@@ -507,16 +556,28 @@
           carouselHtml = buildCarousel(bike.images, bike.name, bike.id);
         }
 
+        let statusLabelHtml = '';
+        if (bike.status === 'WIP') statusLabelHtml = '<span class="status-label">Coming Soon</span>';
+        else if (bike.status === 'Sold') statusLabelHtml = '<span class="status-label">Sold</span>';
+
+        // Wrap carousel with status overlay
+        if (statusLabelHtml && carouselHtml) {
+          carouselHtml = carouselHtml.replace('<div class="carousel"', '<div class="carousel" style="position:relative"');
+          carouselHtml = carouselHtml.replace('</div>', statusLabelHtml + '</div>');
+        }
+
+        const categoryHtml = bike.category ? `<span class="category-label">${bike.category}</span>` : '';
         const mailto = `mailto:bikesale@rueckenwind.berlin?subject=${encodeURIComponent('Anfrage: ' + bike.name)}`;
 
         el.innerHTML = `
           ${carouselHtml}
           <div class="bike-card-body">
+            ${categoryHtml}
             <h2>${bike.name}</h2>
             <div class="description">${bike.desc.replace(/\n/g, '<br>')}</div>
             <div class="actions">
               <span class="btn btn-price">${bike.price} EUR</span>
-              <a class="btn btn-inquire" href="${mailto}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>Anfrage</a>
+              ${!hideInquire ? `<a class="btn btn-inquire" href="${mailto}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>Anfrage</a>` : ''}
             </div>
             <button class="btn-share" onclick="shareBike('${bike.id}', this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg><span class="tooltip"></span></button>
           </div>
@@ -547,6 +608,8 @@
           const price = row.c[2]?.v;
           const desc = row.c[3]?.v;
           const folderUrl = row.c[4]?.v;
+          const status = row.c[5]?.v || '';
+          const type = row.c[6]?.v || '';
           const id = 'bike-' + name.replace(/\W+/g, '-').toLowerCase();
 
           let images = [];
@@ -561,6 +624,8 @@
             price,
             desc,
             images,
+            status,
+            category: CATEGORIES[type] || '',
           });
         }
 
