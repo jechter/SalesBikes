@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>Available Bikes</h1>
+  <div id="bikes"></div>
+
+  <script>
+    const url = "https://docs.google.com/spreadsheets/d/1V_8ExLOLyxVXeImMNdwBGJ9EKeqKqVVZPl_8DVevNC4/gviz/tq?tqx=out:json";
+
+    fetch(url)
+      .then(res => res.text())
+      .then(text => {
+        const json = JSON.parse(text.substr(47).slice(0, -2));
+        const rows = json.table.rows;
+
+        const container = document.getElementById("bikes");
+
+        rows.forEach(row => {
+          const name = row.c[1]?.v;
+          const price = row.c[2]?.v;
+          const desc = row.c[3]?.v;
+          const img = row.c[4]?.v;
+          const status = row.c[5]?.v;
+
+          if (status !== "available") return;
+
+          const el = document.createElement("div");
+          el.innerHTML = `
+            <h2>${name}</h2>
+            <img src="${img}" width="300"/>
+            <p>${desc}</p>
+            <strong>${price}€</strong>
+          `;
+          container.appendChild(el);
+        });
+      });
+  </script>
+</body>
+</html>
