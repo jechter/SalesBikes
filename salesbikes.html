@@ -612,23 +612,31 @@
           const type = row.c[6]?.v || '';
           const id = 'bike-' + name.replace(/\W+/g, '-').toLowerCase();
 
-          let images = [];
-          if (folderUrl) {
-            images = await fetchImages(folderUrl);
-          }
-
           bikes.push({
             id,
             date: dateVal ? parseGSDate(dateVal) : new Date(0),
             name,
             price,
             desc,
-            images,
+            images: [],
+            folderUrl,
             status,
             category: CATEGORIES[type] || '',
           });
         }
 
+        // Render immediately with no images
+        renderBikes();
+
+        // Then fetch images in the background
+        const imagePromises = bikes.map(async (bike) => {
+          if (bike.folderUrl) {
+            bike.images = await fetchImages(bike.folderUrl);
+          }
+        });
+        await Promise.all(imagePromises);
+
+        // Re-render with images
         renderBikes();
       } catch (err) {
         console.error("Failed to load bikes:", err);
