@@ -37,9 +37,42 @@
       opacity: 0.9;
     }
 
+    .sort-bar {
+      max-width: 800px;
+      margin: 1.5rem auto 0;
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 14px;
+      color: #555;
+    }
+
+    .sort-bar button {
+      background: none;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 6px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      color: #333;
+      transition: all 0.15s;
+    }
+
+    .sort-bar button.active {
+      background: #53a735;
+      color: white;
+      border-color: #53a735;
+    }
+
+    .sort-bar button:hover:not(.active) {
+      border-color: #53a735;
+      color: #53a735;
+    }
+
     #bikes {
       max-width: 800px;
-      margin: 2rem auto;
+      margin: 1rem auto 2rem;
       padding: 0 1.5rem;
       display: flex;
       flex-direction: column;
@@ -150,10 +183,7 @@
     .btn-price {
       background: #53a735;
       color: white;
-    }
-
-    .bike-card:hover .btn-price {
-      background: #c666f2;
+      cursor: default;
     }
 
     .btn-inquire {
@@ -238,6 +268,13 @@
     <h1>Bikes for Sale</h1>
     <p>Quality bicycles supporting our community co-op</p>
   </header>
+
+  <div class="sort-bar">
+    Sort by:
+    <button class="active" onclick="sortBikes('date')">Newest first</button>
+    <button onclick="sortBikes('price-asc')">Price: low to high</button>
+    <button onclick="sortBikes('price-desc')">Price: high to low</button>
+  </div>
 
   <div id="bikes">
     <div class="loading">Loading bikes...</div>
@@ -338,6 +375,60 @@
       if (e.key === 'ArrowRight') lightboxNav(1);
     });
 
+    // Parse Google Sheets date string like "Date(2026,1,6)"
+    function parseGSDate(v) {
+      const m = v.match(/Date\((\d+),(\d+),(\d+)\)/);
+      if (!m) return new Date(0);
+      return new Date(+m[1], +m[2], +m[3]);
+    }
+
+    // Bike data and sort state
+    let bikes = [];
+    let currentSort = 'date';
+
+    function sortBikes(mode) {
+      currentSort = mode;
+      document.querySelectorAll('.sort-bar button').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      renderBikes();
+    }
+
+    function renderBikes() {
+      const sorted = [...bikes];
+      if (currentSort === 'date') sorted.sort((a, b) => b.date - a.date);
+      else if (currentSort === 'price-asc') sorted.sort((a, b) => a.price - b.price);
+      else if (currentSort === 'price-desc') sorted.sort((a, b) => b.price - a.price);
+
+      const container = document.getElementById("bikes");
+      container.innerHTML = "";
+
+      for (const bike of sorted) {
+        const el = document.createElement("div");
+        el.className = "bike-card";
+
+        let carouselHtml = "";
+        if (bike.images.length > 0) {
+          carouselData[bike.id] = { images: bike.images, index: 0 };
+          carouselHtml = buildCarousel(bike.images, bike.name, bike.id);
+        }
+
+        const mailto = `mailto:bikesale@rueckenwind.berlin?subject=${encodeURIComponent('Inquiry: ' + bike.name)}`;
+
+        el.innerHTML = `
+          ${carouselHtml}
+          <div class="bike-card-body">
+            <h2>${bike.name}</h2>
+            <div class="description">${bike.desc.replace(/\n/g, '<br>')}</div>
+            <div class="actions">
+              <span class="btn btn-price">${bike.price} EUR</span>
+              <a class="btn btn-inquire" href="${mailto}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>Inquire</a>
+            </div>
+          </div>
+        `;
+        container.appendChild(el);
+      }
+    }
+
     // Load bikes
     async function loadBikes() {
       try {
@@ -348,43 +439,30 @@
         const json = JSON.parse(text.substring(start + 1, end));
         const rows = json.table.rows;
 
-        const container = document.getElementById("bikes");
-        container.innerHTML = "";
-
         for (const row of rows) {
+          const dateVal = row.c[0]?.v;
           const name = row.c[1]?.v;
           const price = row.c[2]?.v;
           const desc = row.c[3]?.v;
           const folderUrl = row.c[4]?.v;
+          const id = 'bike-' + name.replace(/\W+/g, '-').toLowerCase();
 
-          const el = document.createElement("div");
-          el.className = "bike-card";
-
-          let carouselHtml = "";
+          let images = [];
           if (folderUrl) {
-            const images = await fetchImages(folderUrl);
-            if (images.length > 0) {
-              const id = 'bike-' + row.c[0]?.v;
-              carouselData[id] = { images, index: 0 };
-              carouselHtml = buildCarousel(images, name, id);
-            }
+            images = await fetchImages(folderUrl);
           }
 
-          const mailto = `mailto:bikesale@rueckenwind.berlin?subject=${encodeURIComponent('Inquiry: ' + name)}`;
-
-          el.innerHTML = `
-            ${carouselHtml}
-            <div class="bike-card-body">
-              <h2>${name}</h2>
-              <div class="description">${desc.replace(/\n/g, '<br>')}</div>
-              <div class="actions">
-                <span class="btn btn-price">${price} EUR</span>
-                <a class="btn btn-inquire" href="${mailto}">Inquire</a>
-              </div>
-            </div>
-          `;
-          container.appendChild(el);
+          bikes.push({
+            id,
+            date: dateVal ? parseGSDate(dateVal) : new Date(0),
+            name,
+            price,
+            desc,
+            images,
+          });
         }
+
+        renderBikes();
       } catch (err) {
         console.error("Failed to load bikes:", err);
         document.getElementById("bikes").innerHTML = '<div class="error">Failed to load bike listings.</div>';
