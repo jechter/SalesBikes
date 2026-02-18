@@ -69,6 +69,7 @@
       object-fit: contain;
       display: block;
       background: #f0f0f0;
+      cursor: pointer;
     }
 
     .carousel-btn {
@@ -126,21 +127,95 @@
       margin-bottom: 1rem;
     }
 
-    .bike-card .price {
+    .bike-card .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
       display: inline-block;
-      background: #53a735;
-      color: white;
       padding: 15px 26px;
       border-radius: 5px;
       font-size: 1rem;
       font-weight: 700;
       letter-spacing: 2px;
+      text-decoration: none;
       text-transform: capitalize;
       transition: background 0.2s;
+      border: none;
+      cursor: pointer;
     }
 
-    .bike-card:hover .price {
+    .btn-price {
+      background: #53a735;
+      color: white;
+    }
+
+    .bike-card:hover .btn-price {
       background: #c666f2;
+    }
+
+    .btn-inquire {
+      background: white;
+      color: #53a735;
+      border: 2px solid #53a735;
+    }
+
+    .btn-inquire:hover {
+      background: #53a735;
+      color: white;
+    }
+
+    /* Lightbox */
+    .lightbox {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lightbox.active {
+      display: flex;
+    }
+
+    .lightbox img {
+      max-width: 95vw;
+      max-height: 90vh;
+      object-fit: contain;
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 36px;
+      cursor: pointer;
+    }
+
+    .lightbox .carousel-btn {
+      position: absolute;
+      top: 50%;
+    }
+
+    .lightbox .carousel-btn.prev { left: 15px; }
+    .lightbox .carousel-btn.next { right: 15px; }
+
+    .lightbox .carousel-counter {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      right: auto;
     }
 
     .loading {
@@ -168,6 +243,14 @@
     <div class="loading">Loading bikes...</div>
   </div>
 
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+    <button class="carousel-btn prev" onclick="lightboxNav(-1)">&#8249;</button>
+    <img src="" alt="" referrerpolicy="no-referrer">
+    <button class="carousel-btn next" onclick="lightboxNav(1)">&#8250;</button>
+    <span class="carousel-counter"></span>
+  </div>
+
   <script>
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/1V_8ExLOLyxVXeImMNdwBGJ9EKeqKqVVZPl_8DVevNC4/gviz/tq?tqx=out:json";
     const API_KEY = "AIzaSyC0x2Bbiq1YclQJtMBhBjZfrqYW-vdhBJQ";
@@ -181,30 +264,31 @@
       const folderId = extractFolderId(folderUrl);
       if (!folderId) return [];
       const res = await fetch(
-        `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+mimeType+contains+'image'&key=${API_KEY}&fields=files(id,name)&orderBy=name`
+        `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+mimeType+contains+'image'&key=${API_KEY}&fields=files(id,name,thumbnailLink)&orderBy=name`
       );
       const data = await res.json();
-      return (data.files || []).map(f =>
-        `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${API_KEY}`
-      );
+      return (data.files || [])
+        .filter(f => f.thumbnailLink)
+        .map(f => f.thumbnailLink.replace(/=s\d+$/, '=s800'));
     }
+
+    // Carousel
+    const carouselData = {};
 
     function buildCarousel(images, alt, id) {
       if (images.length === 0) return "";
       if (images.length === 1) {
-        return `<div class="carousel"><img src="${images[0]}" alt="${alt}"></div>`;
+        return `<div class="carousel"><img src="${images[0]}" alt="${alt}" referrerpolicy="no-referrer" onclick="openLightbox('${id}', 0)"></div>`;
       }
       return `
         <div class="carousel" id="carousel-${id}">
-          <img src="${images[0]}" alt="${alt}">
-          <button class="carousel-btn prev" onclick="carouselNav('${id}', -1)">\u2039</button>
-          <button class="carousel-btn next" onclick="carouselNav('${id}', 1)">\u203a</button>
+          <img src="${images[0]}" alt="${alt}" referrerpolicy="no-referrer" onclick="openLightbox('${id}', carouselData['${id}'].index)">
+          <button class="carousel-btn prev" onclick="carouselNav('${id}', -1)">&#8249;</button>
+          <button class="carousel-btn next" onclick="carouselNav('${id}', 1)">&#8250;</button>
           <span class="carousel-counter">1 / ${images.length}</span>
         </div>
       `;
     }
-
-    const carouselData = {};
 
     function carouselNav(id, dir) {
       const data = carouselData[id];
@@ -215,6 +299,46 @@
       carousel.querySelector('.carousel-counter').textContent = `${data.index + 1} / ${data.images.length}`;
     }
 
+    // Lightbox
+    let lightboxId = null;
+    let lightboxIndex = 0;
+    const lightboxEl = document.getElementById('lightbox');
+
+    function openLightbox(id, index) {
+      lightboxId = id;
+      lightboxIndex = index;
+      updateLightbox();
+      lightboxEl.classList.add('active');
+    }
+
+    function closeLightbox() {
+      lightboxEl.classList.remove('active');
+    }
+
+    function lightboxNav(dir) {
+      const data = carouselData[lightboxId];
+      lightboxIndex = (lightboxIndex + dir + data.images.length) % data.images.length;
+      updateLightbox();
+    }
+
+    function updateLightbox() {
+      const data = carouselData[lightboxId];
+      lightboxEl.querySelector('img').src = data.images[lightboxIndex];
+      lightboxEl.querySelector('.carousel-counter').textContent = `${lightboxIndex + 1} / ${data.images.length}`;
+    }
+
+    lightboxEl.addEventListener('click', function(e) {
+      if (e.target === lightboxEl) closeLightbox();
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (!lightboxEl.classList.contains('active')) return;
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowLeft') lightboxNav(-1);
+      if (e.key === 'ArrowRight') lightboxNav(1);
+    });
+
+    // Load bikes
     async function loadBikes() {
       try {
         const res = await fetch(SHEET_URL);
@@ -246,12 +370,17 @@
             }
           }
 
+          const mailto = `mailto:bikesale@rueckenwind.berlin?subject=${encodeURIComponent('Inquiry: ' + name)}`;
+
           el.innerHTML = `
             ${carouselHtml}
             <div class="bike-card-body">
               <h2>${name}</h2>
               <div class="description">${desc.replace(/\n/g, '<br>')}</div>
-              <span class="price">${price} EUR</span>
+              <div class="actions">
+                <span class="btn btn-price">${price} EUR</span>
+                <a class="btn btn-inquire" href="${mailto}">Inquire</a>
+              </div>
             </div>
           `;
           container.appendChild(el);
