@@ -33,7 +33,7 @@ SHEET_URL = (
 )
 API_KEY = "AIzaSyC0x2Bbiq1YclQJtMBhBjZfrqYW-vdhBJQ"
 ZIPCODE = "12047"
-CATEGORY = "Fahrräder & Zubehör"
+CATEGORY_BASE = "210/217"
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 FOOTER_FILE = SCRIPT_DIR / "ad-footer.txt"
@@ -68,11 +68,15 @@ def find_bike(rows, bike_id):
             price = cells[2]["v"] if cells[2] else 0
             desc = cells[3]["v"] if cells[3] else ""
             folder_url = cells[4]["v"] if len(cells) > 4 and cells[4] else None
+            bike_type = cells[6]["v"].strip().lower() if len(cells) > 6 and cells[6] else ""
+            bike_art = cells[7]["v"].strip().lower() if len(cells) > 7 and cells[7] else "herren"
             return {
                 "name": name,
                 "price": price,
                 "description": desc,
                 "folder_url": folder_url,
+                "bike_type": bike_type,
+                "bike_art": bike_art,
             }
     return None
 
@@ -130,16 +134,27 @@ def generate_ad_yaml(bike, image_paths):
     for img in image_paths:
         images_lines += f'\n  - "images/{img.name}"'
 
+    # Build category and special_attributes
+    bike_art = bike.get("bike_art", "herren")
+    bike_type = bike.get("bike_type", "")
+    category = f"{CATEGORY_BASE}/{bike_art}"
+
+    special_attrs = f"special_attributes:\n  art_s: {bike_art}\n  versand_s: nein\n"
+    if bike_type:
+        special_attrs += f"  type_s: {bike_type}\n"
+
     return (
         f'active: true\n'
         f'type: OFFER\n'
         f'title: "{yaml_escape(bike["name"])}"\n'
         f'description: |\n'
         f'{indented_desc}\n'
-        f'category: "{CATEGORY}"\n'
+        f'category: {category}\n'
+        f'{special_attrs}'
         f'price: {int(bike["price"])}\n'
         f'price_type: FIXED\n'
         f'shipping_type: PICKUP\n'
+        f'sell_directly: false\n'
         f'contact:\n'
         f'  zipcode: "{ZIPCODE}"\n'
         f'images:{images_lines}\n'
@@ -240,15 +255,18 @@ def main():
             sys.exit(1)
 
         config_text = main_config.read_text(encoding="utf-8")
-        # Replace or append ad_files to point only at this ad
+        # Replace or append ad_files to point only at this ad.
+        # The field can be a scalar or a YAML list (key + indented "- ..." lines),
+        # so we match the key line and any following indented lines.
         ad_pattern = str(yaml_path)
         if re.search(r'^ad_files\s*:', config_text, re.MULTILINE):
             config_text = re.sub(
-                r'^ad_files\s*:.*$', f'ad_files: "{ad_pattern}"',
+                r'^ad_files\s*:.*(?:\n[ \t]+.*)*',
+                f'ad_files:\n  - "{ad_pattern}"',
                 config_text, count=1, flags=re.MULTILINE,
             )
         else:
-            config_text += f'\nad_files: "{ad_pattern}"\n'
+            config_text += f'\nad_files:\n  - "{ad_pattern}"\n'
 
         tmp_config = ad_dir / "_publish_config.yaml"
         tmp_config.write_text(config_text, encoding="utf-8")
@@ -258,7 +276,7 @@ def main():
         try:
             result = subprocess.run(
                 [str(VENV_PYTHON), "-m", "kleinanzeigen_bot", "publish",
-                 "--ads=new", f"--config={tmp_config}"],
+                 "--ads=new", f"--config={tmp_config}", "--workspace-mode=portable"],
                 cwd=SCRIPT_DIR,
             )
             if result.returncode == 0:
