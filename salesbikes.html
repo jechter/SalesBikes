@@ -58,6 +58,55 @@
       border-color: #53a735;
     }
 
+    .carousel {
+      position: relative;
+      background: #f0f0f0;
+    }
+
+    .carousel img {
+      width: 100%;
+      max-height: 450px;
+      object-fit: contain;
+      display: block;
+      background: #f0f0f0;
+    }
+
+    .carousel-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,0.4);
+      color: white;
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .carousel-btn:hover {
+      background: rgba(0,0,0,0.7);
+    }
+
+    .carousel-btn.prev { left: 10px; }
+    .carousel-btn.next { right: 10px; }
+
+    .carousel-counter {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 13px;
+    }
+
     .bike-card-body {
       padding: 1.5rem;
     }
@@ -120,11 +169,56 @@
   </div>
 
   <script>
-    const url = "https://docs.google.com/spreadsheets/d/1V_8ExLOLyxVXeImMNdwBGJ9EKeqKqVVZPl_8DVevNC4/gviz/tq?tqx=out:json";
+    const SHEET_URL = "https://docs.google.com/spreadsheets/d/1V_8ExLOLyxVXeImMNdwBGJ9EKeqKqVVZPl_8DVevNC4/gviz/tq?tqx=out:json";
+    const API_KEY = "AIzaSyC0x2Bbiq1YclQJtMBhBjZfrqYW-vdhBJQ";
 
-    fetch(url)
-      .then(res => res.text())
-      .then(text => {
+    function extractFolderId(url) {
+      const match = url.match(/folders\/([a-zA-Z0-9_-]+)/);
+      return match ? match[1] : null;
+    }
+
+    async function fetchImages(folderUrl) {
+      const folderId = extractFolderId(folderUrl);
+      if (!folderId) return [];
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+mimeType+contains+'image'&key=${API_KEY}&fields=files(id,name)&orderBy=name`
+      );
+      const data = await res.json();
+      return (data.files || []).map(f =>
+        `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&key=${API_KEY}`
+      );
+    }
+
+    function buildCarousel(images, alt, id) {
+      if (images.length === 0) return "";
+      if (images.length === 1) {
+        return `<div class="carousel"><img src="${images[0]}" alt="${alt}"></div>`;
+      }
+      return `
+        <div class="carousel" id="carousel-${id}">
+          <img src="${images[0]}" alt="${alt}">
+          <button class="carousel-btn prev" onclick="carouselNav('${id}', -1)">\u2039</button>
+          <button class="carousel-btn next" onclick="carouselNav('${id}', 1)">\u203a</button>
+          <span class="carousel-counter">1 / ${images.length}</span>
+        </div>
+      `;
+    }
+
+    const carouselData = {};
+
+    function carouselNav(id, dir) {
+      const data = carouselData[id];
+      data.index = (data.index + dir + data.images.length) % data.images.length;
+      const carousel = document.getElementById('carousel-' + id);
+      const img = carousel.querySelector('img');
+      img.src = data.images[data.index];
+      carousel.querySelector('.carousel-counter').textContent = `${data.index + 1} / ${data.images.length}`;
+    }
+
+    async function loadBikes() {
+      try {
+        const res = await fetch(SHEET_URL);
+        const text = await res.text();
         const start = text.indexOf('(');
         const end = text.lastIndexOf(')');
         const json = JSON.parse(text.substring(start + 1, end));
@@ -133,14 +227,27 @@
         const container = document.getElementById("bikes");
         container.innerHTML = "";
 
-        rows.forEach(row => {
+        for (const row of rows) {
           const name = row.c[1]?.v;
           const price = row.c[2]?.v;
           const desc = row.c[3]?.v;
+          const folderUrl = row.c[4]?.v;
 
           const el = document.createElement("div");
           el.className = "bike-card";
+
+          let carouselHtml = "";
+          if (folderUrl) {
+            const images = await fetchImages(folderUrl);
+            if (images.length > 0) {
+              const id = 'bike-' + row.c[0]?.v;
+              carouselData[id] = { images, index: 0 };
+              carouselHtml = buildCarousel(images, name, id);
+            }
+          }
+
           el.innerHTML = `
+            ${carouselHtml}
             <div class="bike-card-body">
               <h2>${name}</h2>
               <div class="description">${desc.replace(/\n/g, '<br>')}</div>
@@ -148,12 +255,14 @@
             </div>
           `;
           container.appendChild(el);
-        });
-      })
-      .catch(err => {
+        }
+      } catch (err) {
         console.error("Failed to load bikes:", err);
         document.getElementById("bikes").innerHTML = '<div class="error">Failed to load bike listings.</div>';
-      });
+      }
+    }
+
+    loadBikes();
   </script>
 </body>
 </html>
