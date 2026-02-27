@@ -355,13 +355,6 @@
   </style>
 </head>
 <body>
-  <header>
-    <img src="https://rueckenwind.berlin/wp-content/uploads/2021/04/logo_NEU-ohne-e1632837382893.png" alt="Rückenwind Berlin">
-    <div class="header-text">
-      <h1>Verkaufsräder</h1>
-    </div>
-  </header>
-
   <p style="max-width:800px;margin:1.5rem auto 0;padding:0 1.5rem;color:#333;font-size:15px">Um unsere Vereinsarbeit zu finanzieren bieten wir gelegentlich besondere Fahrräder zum Verkauf an. Alle Räder wurden von uns in der Werkstatt gewartet und Verschleißteile wenn nötig erneuert. Ihr könnt die Räder bei uns in der Werkstatt in Berlin Neukölln besichtigen und Probe fahren – bitte meldet euch per Mail bei uns, wenn ihr einen Termin vereinbaren möchtet.</p>
 
   <div class="sort-bar">
@@ -645,6 +638,14 @@
     }
 
     loadBikes();
+
+    // Tell parent frame our height so it can resize the iframe
+    function postHeight() {
+      if (window.parent !== window) {
+        window.parent.postMessage({ salesbikesHeight: document.body.scrollHeight }, '*');
+      }
+    }
+    new ResizeObserver(postHeight).observe(document.body);
   </script>
 </body>
 </html>
