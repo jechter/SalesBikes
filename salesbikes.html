@@ -44,8 +44,7 @@
     }
 
     .sort-bar {
-      max-width: 800px;
-      margin: 1.5rem auto 0;
+      margin: 1.5rem 0 0;
       padding: 0 1.5rem;
       display: flex;
       align-items: center;
@@ -77,8 +76,7 @@
     }
 
     #bikes {
-      max-width: 800px;
-      margin: 1rem auto 2rem;
+      margin: 1rem 0 2rem;
       padding: 0 1.5rem;
       display: flex;
       flex-direction: column;
@@ -91,6 +89,26 @@
       border: 1px solid #e0e0e0;
       overflow: hidden;
       transition: border-color 0.2s;
+    }
+
+    @media (min-width: 768px) {
+      .bike-card {
+        display: flex;
+      }
+      .bike-card .carousel {
+        width: 45%;
+        height: 350px;
+        flex-shrink: 0;
+      }
+      .bike-card .carousel img {
+        max-height: none;
+        height: 100%;
+        object-fit: cover;
+      }
+      .bike-card-body {
+        flex: 1;
+        min-width: 0;
+      }
     }
 
     .bike-card:hover {
@@ -273,8 +291,7 @@
     }
 
     .show-all-bar {
-      max-width: 800px;
-      margin: 1rem auto 0;
+      margin: 1rem 0 0;
       padding: 0 1.5rem;
     }
 
@@ -355,7 +372,7 @@
   </style>
 </head>
 <body>
-  <p style="max-width:800px;margin:1.5rem auto 0;padding:0 1.5rem;color:#333;font-size:15px">Um unsere Vereinsarbeit zu finanzieren bieten wir gelegentlich besondere Fahrräder zum Verkauf an. Alle Räder wurden von uns in der Werkstatt gewartet und Verschleißteile wenn nötig erneuert. Ihr könnt die Räder bei uns in der Werkstatt in Berlin Neukölln besichtigen und Probe fahren – bitte meldet euch per Mail bei uns, wenn ihr einen Termin vereinbaren möchtet.</p>
+  <p style="margin:1.5rem 0 0;padding:0 1.5rem;color:#333;font-size:15px">Um unsere Vereinsarbeit zu finanzieren bieten wir gelegentlich besondere Fahrräder zum Verkauf an. Alle Räder wurden von uns in der Werkstatt gewartet und Verschleißteile wenn nötig erneuert. Ihr könnt die Räder bei uns in der Werkstatt in Berlin Neukölln besichtigen und Probe fahren – bitte meldet euch per Mail bei uns, wenn ihr einen Termin vereinbaren möchtet.</p>
 
   <div class="sort-bar">
     Sortierung:
@@ -441,10 +458,16 @@
       lightboxIndex = index;
       updateLightbox();
       lightboxEl.classList.add('active');
+      if (window.parent !== window) {
+        window.parent.postMessage({ salesbikesFullscreen: true }, '*');
+      }
     }
 
     function closeLightbox() {
       lightboxEl.classList.remove('active');
+      if (window.parent !== window) {
+        window.parent.postMessage({ salesbikesFullscreen: false }, '*');
+      }
     }
 
     function lightboxNav(dir) {
@@ -545,10 +568,9 @@
         el.id = bike.id;
 
         let carouselHtml = "";
-        if (bike.images.length > 0) {
-          carouselData[bike.id] = { images: bike.images, index: 0 };
-          carouselHtml = buildCarousel(bike.images, bike.name, bike.id);
-        }
+        const images = bike.images.length > 0 ? bike.images : ['bike-placeholder.png'];
+        carouselData[bike.id] = { images, index: 0 };
+        carouselHtml = buildCarousel(images, bike.name, bike.id);
 
         let statusLabelHtml = '';
         if (bike.status === 'WIP') statusLabelHtml = '<span class="status-label">Coming Soon</span>';
