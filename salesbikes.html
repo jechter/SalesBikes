@@ -470,9 +470,10 @@
       if (e.key === 'ArrowRight') lightboxNav(1);
     });
 
-    // Share
+    // Share — use ?shareBase= param if embedded in an iframe, else current URL
+    const shareBase = new URLSearchParams(location.search).get('shareBase') || (location.origin + location.pathname);
     function shareBike(id, btn) {
-      const url = location.origin + location.pathname + '#' + id;
+      const url = shareBase + '#' + id;
       navigator.clipboard.writeText(url).then(() => {
         const tooltip = btn.querySelector('.tooltip');
         tooltip.textContent = 'Link kopiert!';
