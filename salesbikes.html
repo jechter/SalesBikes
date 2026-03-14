@@ -379,6 +379,7 @@
     <button class="active" onclick="sortBikes('date')">Neuste</button>
     <button onclick="sortBikes('price-asc')">Billigste</button>
     <button onclick="sortBikes('price-desc')">Teuerste</button>
+    <button onclick="sortBikes('sold')">Verkauft</button>
   </div>
 
   <div id="bikes">
@@ -543,11 +544,16 @@
         showAllBar.style.display = 'none';
       }
 
-      const list = filtered && filtered.length > 0 ? filtered : [...bikes];
-      if (!filtered) {
-        // Sort by chosen field, but always push Sold to the end
-        const statusOrder = s => s === 'Sold' ? 2 : s === 'WIP' ? 1 : 0;
+      let list;
+      if (filtered && filtered.length > 0) {
+        list = filtered;
+      } else if (currentSort === 'sold') {
+        list = bikes.filter(b => b.status === 'Sold');
+        list.sort((a, b) => b.date - a.date);
+      } else {
+        list = bikes.filter(b => b.status !== 'Sold');
         list.sort((a, b) => {
+          const statusOrder = s => s === 'WIP' ? 1 : 0;
           const sa = statusOrder(a.status), sb = statusOrder(b.status);
           if (sa !== sb) return sa - sb;
           if (currentSort === 'date') return b.date - a.date;

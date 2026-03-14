@@ -37,3 +37,14 @@ The first row contains headers. Expected columns (0-indexed):
 - The site should look appealing and be easy to browse on both desktop and mobile.
 - Prices are displayed in euros (EUR).
 - Styling matches the main rueckenwind.berlin website (green #53a735, Arial/Trebuchet MS fonts).
+
+## Publishing to kleinanzeigen.de
+
+`publish-bike.py` cross-posts a bike listing from the sales site to kleinanzeigen.de.
+
+- Uses [kleinanzeigen-bot](https://github.com/Second-Hand-Friends/kleinanzeigen-bot), installed from git into `.venv/`.
+- To update kleinanzeigen-bot: `.venv/bin/pip install --upgrade "git+https://github.com/Second-Hand-Friends/kleinanzeigen-bot.git@latest"`
+- Usage: `python3 publish-bike.py <bike-share-url>` (or `--dry-run` to preview without publishing).
+- Requires `config.yaml` with kleinanzeigen.de login credentials (created via `.venv/bin/python -m kleinanzeigen_bot create-config`).
+- Generated ad configs are stored in `kleinanzeigen-ads/<bike-id>/`.
+- The ad description is appended with content from `ad-footer.txt`.
