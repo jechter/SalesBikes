@@ -268,7 +268,16 @@ def main():
         else:
             config_text += f'\nad_files:\n  - "{ad_pattern}"\n'
 
-        tmp_config = ad_dir / "_publish_config.yaml"
+        # Disable incognito mode — the kleinanzeigen Business portal UI
+        # shown in private windows is not supported by kleinanzeigen-bot.
+        if re.search(r'^  use_private_window\s*:', config_text, re.MULTILINE):
+            config_text = re.sub(
+                r'^(  use_private_window\s*:).*',
+                r'\1 false',
+                config_text, count=1, flags=re.MULTILINE,
+            )
+
+        tmp_config = SCRIPT_DIR / "_publish_config.yaml"
         tmp_config.write_text(config_text, encoding="utf-8")
 
         print()
