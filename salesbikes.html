@@ -379,7 +379,6 @@
     <button class="active" onclick="sortBikes('date')">Neuste</button>
     <button onclick="sortBikes('price-asc')">Billigste</button>
     <button onclick="sortBikes('price-desc')">Teuerste</button>
-    <button onclick="sortBikes('sold')">Verkauft</button>
   </div>
 
   <div id="bikes">
@@ -515,7 +514,8 @@
 
     // Bike data and sort state
     let bikes = [];
-    let currentSort = 'date';
+    const showSold = new URLSearchParams(location.search).has('sold');
+    let currentSort = showSold ? 'sold' : 'date';
 
     function sortBikes(mode) {
       currentSort = mode;
@@ -529,7 +529,7 @@
       const filtered = filterId ? bikes.filter(b => b.id === filterId) : null;
 
       // Show/hide sort bar and show-all bar
-      document.querySelector('.sort-bar').style.display = filtered ? 'none' : '';
+      document.querySelector('.sort-bar').style.display = filtered || showSold ? 'none' : '';
       let showAllBar = document.querySelector('.show-all-bar');
       if (filtered && filtered.length > 0) {
         if (!showAllBar) {

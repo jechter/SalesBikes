@@ -2,10 +2,16 @@
   var frame = document.getElementById('salesbikes-frame');
   if (!frame) return;
 
-  // Forward parent hash to iframe
-  if (location.hash) {
-    frame.src = frame.src.split('#')[0] + location.hash;
+  // Forward the private sold-list switch and hash to the iframe.
+  // This lets the embedding page use /salesbikes/?sold without exposing a control.
+  var frameUrl = new URL(frame.src, location.href);
+  if (new URLSearchParams(location.search).has('sold')) {
+    frameUrl.searchParams.set('sold', '');
   }
+  if (location.hash) {
+    frameUrl.hash = location.hash;
+  }
+  frame.src = frameUrl.toString();
 
   // Listen for messages from iframe
   window.addEventListener('message', function(e) {
