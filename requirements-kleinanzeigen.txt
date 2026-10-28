@@ -1,0 +1,1 @@
+kleinanzeigen-bot @ git+https://github.com/Second-Hand-Friends/kleinanzeigen-bot.git@e57f8f67af6114fb147ff04fb1eaa6a7a502bf4b

@@ -43,7 +43,8 @@ The first row contains headers. Expected columns (0-indexed):
 `publish-bike.py` cross-posts a bike listing from the sales site to kleinanzeigen.de.
 
 - Uses [kleinanzeigen-bot](https://github.com/Second-Hand-Friends/kleinanzeigen-bot), installed from git into `.venv/`.
-- To update kleinanzeigen-bot: `.venv/bin/pip install --upgrade "git+https://github.com/Second-Hand-Friends/kleinanzeigen-bot.git@latest"`
+- Install or update the pinned version with `./update-kleinanzeigen-bot.sh`.
+- The pinned revision is recorded in `requirements-kleinanzeigen.txt`; update it together with the revision in the updater script.
 - Usage: `python3 publish-bike.py <bike-share-url>` (or `--dry-run` to preview without publishing).
 - Requires `config.yaml` with kleinanzeigen.de login credentials (created via `.venv/bin/python -m kleinanzeigen_bot create-config`).
 - Generated ad configs are stored in `kleinanzeigen-ads/<bike-id>/`.
